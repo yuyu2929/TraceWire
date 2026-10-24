@@ -58,6 +58,7 @@ class Tracer:
         self.exclude = list(exclude) or []
         self.max_locals = max_locals
         self._snapshots = {}   # id(frame) -> {name: frozen value}
+        self._wanted_cache = {}   # filename -> bool (called on every call event)
         self._event_count = 0
 
     # -- filtering ---------------------------------------------------------
@@ -77,6 +78,14 @@ class Tracer:
 
     def _wanted(self, code) -> bool:
         module = code.co_filename
+        cached = self._wanted_cache.get(module)
+        if cached is not None:
+            return cached
+        verdict = self._decide(module)
+        self._wanted_cache[module] = verdict
+        return verdict
+
+    def _decide(self, module) -> bool:
         if not module or module.startswith("<"):   # interactive, builtins
             return False
         absolute = os.path.abspath(module)
@@ -186,21 +195,30 @@ def record(script, outfile, include=("*",), exclude=("tracewire",), argv=None,
         modules=list(include),
     )
     tracer = Tracer(writer, include=include, exclude=exclude, max_locals=max_locals)
+
+    # ---- everything that is NOT the user's program happens before tracing ---
+    # Tracing must start as late as possible: any library call made between
+    # start() and the user's first line is recorded as if it were user code.
+    # Do the path juggling, file read and compile up front, so the only thing
+    # executed while the hook is live is the program itself.  (This cost 193
+    # junk events from ntpath/posixpath on Python 3.10.)
+    script_abs = os.path.abspath(script)
+    with open(script, "r", encoding="utf-8") as fh:
+        source = fh.read()
+    code = compile(source, script, "exec")
+    globals_ = {"__name__": "__main__", "__file__": script_abs}
+    script_dir = os.path.dirname(script_abs)
     old_argv = sys.argv
     old_path = sys.path[:]
     error = None
     exit_code = 0
     sys.argv = [script] + list(argv or [])
+    if script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
     tracer.start()
     try:
-        script_dir = os.path.dirname(os.path.abspath(script))
-        if script_dir not in sys.path:
-            sys.path.insert(0, script_dir)
         try:
-            with open(script, "r", encoding="utf-8") as fh:
-                source = fh.read()
-            code = compile(source, script, "exec")
-            exec(code, {"__name__": "__main__", "__file__": os.path.abspath(script)})
+            exec(code, globals_)
         except SystemExit as exc:
             if exc.code not in (0, None):
                 error = exc
@@ -211,8 +229,7 @@ def record(script, outfile, include=("*",), exclude=("tracewire",), argv=None,
     finally:
         # Stop tracing *before* anything else runs: while the hook is active,
         # printing a traceback records thousands of traceback/linecache/
-        # tokenizer internals into the trace (measured: 32k junk events for a
-        # four-line script).  That buried the user's own frame.
+        # tokenizer internals into the trace.  That buried the user's frame.
         tracer.stop()
         sys.argv = old_argv
         sys.path[:] = old_path
