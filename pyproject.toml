@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tracewire"
+version = "0.2.0"
+description = "Record an instrumented Python execution as a delta-compressed trace and inspect it afterwards as an interactive timeline - a post-mortem debugger for code that already crashed."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "TraceWire Contributors" }]
+keywords = ["debugger", "tracing", "time-travel", "post-mortem", "instrumentation", "settrace"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/yuyu2929/TraceWire"
+Repository = "https://github.com/yuyu2929/TraceWire"
+Issues = "https://github.com/yuyu2929/TraceWire/issues"
+Changelog = "https://github.com/yuyu2929/TraceWire/blob/main/CHANGELOG.md"
+"Commercial license" = "https://github.com/yuyu2929/TraceWire/blob/main/COMMERCIAL.md"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+tracewire = "tracewire.cli:main"
+
+[tool.setuptools]
+packages = ["tracewire"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

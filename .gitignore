@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# TraceWire artifacts
+*.trace
+*.trace.sets.json
+*.html
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# pytest
+.pytest_cache/
